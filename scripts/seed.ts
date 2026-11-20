@@ -2,9 +2,10 @@
  * Creates the demo accounts and a few documents that show owned vs shared access.
  * Safe to run more than once: users are upserted, and documents are only added on the first run.
  *
- *   npm run db:seed
+ *   npm run db:seed          # first-time setup
+ *   npm run db:reset-demo    # put the demo documents back to their original state
  */
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../src/lib/db/schema";
@@ -16,6 +17,8 @@ try {
 } catch {
   // No .env.local: rely on variables already in the environment.
 }
+
+const RESET = process.argv.includes("--reset");
 
 const WELCOME = `
 <h1>Welcome to Ajaia Docs</h1>
@@ -77,14 +80,20 @@ async function main() {
     const bob = byEmail.get("bob@example.com")!;
     const carol = byEmail.get("carol@example.com")!;
 
-    const existing = await db
-      .select({ id: schema.documents.id })
-      .from(schema.documents)
-      .where(eq(schema.documents.ownerId, alice.id))
-      .limit(1);
-    if (existing.length > 0) {
-      console.log("Demo users are ready. Demo documents already exist, so none were added.");
-      return;
+    if (RESET) {
+      // Cascades to their shares. Only touches documents owned by the demo accounts.
+      await db.delete(schema.documents).where(inArray(schema.documents.ownerId, [alice.id, bob.id, carol.id]));
+      console.log("Removed all documents owned by the demo accounts.");
+    } else {
+      const existing = await db
+        .select({ id: schema.documents.id })
+        .from(schema.documents)
+        .where(eq(schema.documents.ownerId, alice.id))
+        .limit(1);
+      if (existing.length > 0) {
+        console.log("Demo users are ready. Demo documents already exist, so none were added (use --reset to recreate them).");
+        return;
+      }
     }
 
     const [welcome] = await db

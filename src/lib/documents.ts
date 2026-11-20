@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { cache } from "react";
 import { getDb } from "./db";
 import { documents, documentShares, users } from "./db/schema";
 import { AppError } from "./errors";
@@ -18,8 +19,14 @@ export type DocumentWithAccess = {
   owner: { id: string; name: string; email: string };
 };
 
-/** A document plus the caller's role, or null when it doesn't exist OR the caller has no access. */
-export async function getDocumentWithAccess(documentId: string, userId: string): Promise<DocumentWithAccess | null> {
+/**
+ * A document plus the caller's role, or null when it doesn't exist OR the caller has no access.
+ * Wrapped in React's cache() so a page and its metadata share one query per request.
+ */
+export const getDocumentWithAccess = cache(async function getDocumentWithAccess(
+  documentId: string,
+  userId: string,
+): Promise<DocumentWithAccess | null> {
   if (!isUuid(documentId)) return null;
   const [row] = await getDb()
     .select({ doc: documents, shareRole: documentShares.role, ownerName: users.name, ownerEmail: users.email })
@@ -32,7 +39,7 @@ export async function getDocumentWithAccess(documentId: string, userId: string):
   const role = resolveAccess(row.doc, userId, row.shareRole);
   if (!role) return null;
   return { ...row.doc, role, owner: { id: row.doc.ownerId, name: row.ownerName, email: row.ownerEmail } };
-}
+});
 
 /** Every document operation starts here: load with the caller's role, then check the action. */
 export async function requireDocumentAccess(documentId: string, userId: string, action: DocumentAction) {
@@ -107,7 +114,7 @@ export async function saveDocumentContent(documentId: string, userId: string, co
     .returning({ version: documents.version, updatedAt: documents.updatedAt });
   if (!saved) {
     const [current] = await db.select({ version: documents.version }).from(documents).where(eq(documents.id, documentId));
-    throw new AppError(409, "conflict", "Someone else saved this document after you opened it.", {
+    throw new AppError(409, "conflict", "This document was saved somewhere else after you opened it.", {
       currentVersion: current?.version,
     });
   }

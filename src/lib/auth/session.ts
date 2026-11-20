@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { getDb } from "@/lib/db";
 import { users, type User } from "@/lib/db/schema";
 import { isUuid } from "@/lib/ids";
@@ -51,12 +52,13 @@ async function readSessionUserId(): Promise<string | null> {
   }
 }
 
-export async function getCurrentUser(): Promise<User | null> {
+/** Cached per request, so layouts, pages and metadata can all ask without repeating the query. */
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<User | null> {
   const userId = await readSessionUserId();
   if (!userId) return null;
   const [user] = await getDb().select().from(users).where(eq(users.id, userId)).limit(1);
   return user ?? null;
-}
+});
 
 /** For pages: send signed-out visitors to the account picker. */
 export async function requireUser(): Promise<User> {

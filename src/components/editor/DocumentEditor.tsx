@@ -241,8 +241,9 @@ export function DocumentEditor({ doc, role, owner }: Props) {
         <div role="alert" className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p className="flex-1">
-            Someone else saved changes to this document after you opened it, so your latest edits weren&apos;t saved.
-            Copy anything you want to keep, then reload to get the newest version.
+            This document was changed somewhere else (by another person, or by you in another tab) after you opened
+            it, so your latest edits weren&apos;t saved. Copy anything you want to keep, then reload to get the newest
+            version.
           </p>
           <button
             type="button"
