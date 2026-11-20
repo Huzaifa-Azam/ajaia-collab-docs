@@ -1,11 +1,12 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { cache } from "react";
 import { getDb } from "./db";
-import { documents, documentShares, users, type Document } from "./db/schema";
+import { documents, documentShares, documentVersions, users, type Document } from "./db/schema";
 import { AppError } from "./errors";
 import { isUuid } from "./ids";
 import { assertAccess, resolveAccess, type AccessRole, type DocumentAction, type ShareRole } from "./permissions";
 import { sanitizeDocumentHtml } from "./sanitize";
+import { isEffectivelyEmpty, shouldKeepVersion } from "./versioning";
 
 export type DocumentWithAccess = Document & {
   role: AccessRole;
@@ -98,26 +99,62 @@ export async function renameDocument(documentId: string, userId: string, title: 
  * version the client started from. Otherwise someone else saved in between, so we return
  * 409 rather than silently overwriting their work.
  */
-export async function saveDocumentContent(documentId: string, userId: string, content: string, baseVersion: number) {
-  await requireDocumentAccess(documentId, userId, "edit");
+export async function saveDocumentContent(
+  documentId: string,
+  userId: string,
+  content: string,
+  baseVersion: number,
+  options: { alwaysKeepVersion?: boolean } = {},
+) {
+  const doc = await requireDocumentAccess(documentId, userId, "edit");
   const db = getDb();
-  const [saved] = await db
-    .update(documents)
-    .set({
-      content: sanitizeDocumentHtml(content),
-      version: sql`${documents.version} + 1`,
-      lastEditedBy: userId,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(documents.id, documentId), eq(documents.version, baseVersion)))
-    .returning({ version: documents.version, updatedAt: documents.updatedAt });
-  if (!saved) {
-    const [current] = await db.select({ version: documents.version }).from(documents).where(eq(documents.id, documentId));
-    throw new AppError(409, "conflict", "This document was saved somewhere else after you opened it.", {
-      currentVersion: current?.version,
-    });
+
+  // Decide whether the content about to be replaced goes into the version history.
+  let keepVersion = false;
+  if (doc.version === baseVersion) {
+    if (options.alwaysKeepVersion) {
+      keepVersion = !isEffectivelyEmpty(doc.content);
+    } else {
+      const [lastSnapshot] = await db
+        .select({ createdAt: documentVersions.createdAt })
+        .from(documentVersions)
+        .where(eq(documentVersions.documentId, documentId))
+        .orderBy(desc(documentVersions.createdAt))
+        .limit(1);
+      keepVersion = shouldKeepVersion(doc, userId, lastSnapshot?.createdAt ?? null);
+    }
   }
-  return saved;
+
+  // The save and its snapshot succeed or fail together.
+  return db.transaction(async (tx) => {
+    const [saved] = await tx
+      .update(documents)
+      .set({
+        content: sanitizeDocumentHtml(content),
+        version: sql`${documents.version} + 1`,
+        lastEditedBy: userId,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(documents.id, documentId), eq(documents.version, baseVersion)))
+      .returning({ version: documents.version, updatedAt: documents.updatedAt });
+    if (!saved) {
+      const [current] = await tx.select({ version: documents.version }).from(documents).where(eq(documents.id, documentId));
+      throw new AppError(409, "conflict", "This document was saved somewhere else after you opened it.", {
+        currentVersion: current?.version,
+      });
+    }
+    if (keepVersion) {
+      await tx.insert(documentVersions).values({
+        documentId,
+        version: doc.version,
+        title: doc.title,
+        content: doc.content,
+        savedBy: doc.lastEditedBy,
+        savedAt: doc.updatedAt,
+      });
+    }
+    return saved;
+  });
 }
 
 export async function deleteDocument(documentId: string, userId: string) {

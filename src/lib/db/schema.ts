@@ -65,5 +65,27 @@ export const documentPresence = pgTable(
   (t) => [primaryKey({ columns: [t.documentId, t.userId] })],
 );
 
+/**
+ * Earlier versions of a document's content. One snapshot per editing session, not one per
+ * autosave (see versioning.ts). `savedBy`/`savedAt` describe when the content was originally
+ * saved, which is what people care about ("Alice's version from 10:42").
+ */
+export const documentVersions = pgTable(
+  "document_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    savedBy: uuid("saved_by").references(() => users.id, { onDelete: "set null" }),
+    savedAt: timestamp("saved_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("document_versions_document_id_idx").on(t.documentId, t.createdAt)],
+);
+
 export type User = typeof users.$inferSelect;
 export type Document = typeof documents.$inferSelect;

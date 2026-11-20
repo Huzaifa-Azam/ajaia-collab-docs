@@ -30,6 +30,10 @@ export const shareSchema = z.object({
   role: z.enum(["viewer", "editor"], "Access must be viewer or editor."),
 });
 
+export const restoreVersionSchema = z.object({
+  baseVersion: z.number().int().positive(),
+});
+
 export function parseOrThrow<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
   const result = schema.safeParse(input);
   if (!result.success) {

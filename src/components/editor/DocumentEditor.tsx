@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
-import { ArrowLeft, Check, Eye, LoaderCircle, RefreshCw, Share2, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, Eye, History, LoaderCircle, RefreshCw, Share2, TriangleAlert } from "lucide-react";
 import { ApiError, apiFetch, getErrorMessage } from "@/lib/client/api";
 import { describePresence } from "@/lib/format";
 import { TITLE_MAX_LENGTH } from "@/lib/limits";
@@ -13,6 +13,7 @@ import type { AccessRole } from "@/lib/permissions";
 import { Avatar } from "@/components/Avatar";
 import { ShareDialog } from "@/components/ShareDialog";
 import { ExportMenu } from "./ExportMenu";
+import { HistoryDialog, type RestoredVersion } from "./HistoryDialog";
 import { Toolbar } from "./Toolbar";
 
 type SaveState = "saved" | "unsaved" | "saving" | "retrying" | "failed" | "conflict";
@@ -43,6 +44,8 @@ export function DocumentEditor({ doc, role, owner }: Props) {
   const [shareOpen, setShareOpen] = useState(false);
   const [viewers, setViewers] = useState<Viewer[]>([]);
   const [remoteChange, setRemoteChange] = useState<{ by: string | null } | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [restoredNotice, setRestoredNotice] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Autosave bookkeeping lives in refs so editor callbacks never see stale values.
@@ -213,6 +216,21 @@ export function DocumentEditor({ doc, role, owner }: Props) {
     document.title = `${title.trim() || "Untitled document"} · Ajaia Docs`;
   }, [title]);
 
+  function handleRestored(restored: RestoredVersion) {
+    if (!editor) return;
+    editor.commands.setContent(restored.content, { emitUpdate: false });
+    versionRef.current = restored.version;
+    dirtyRef.current = false;
+    latestHtmlRef.current = null;
+    setRemoteChange(null);
+    setSaveState("saved");
+    const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+      new Date(restored.restoredFrom),
+    );
+    setRestoredNotice(`Restored the version from ${when}`);
+    setTimeout(() => setRestoredNotice(null), 8000);
+  }
+
   async function commitTitle() {
     const next = title.trim();
     if (next === savedTitleRef.current) {
@@ -289,6 +307,7 @@ export function DocumentEditor({ doc, role, owner }: Props) {
                 </span>
               )}
               {titleError && <span className="text-red-600">{titleError}</span>}
+              {restoredNotice && <span className="text-green-700">{restoredNotice}</span>}
             </div>
           </div>
           {viewers.length > 0 && (
@@ -305,6 +324,15 @@ export function DocumentEditor({ doc, role, owner }: Props) {
               </span>
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            title="Version history"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            <History className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">History</span>
+          </button>
           <ExportMenu editor={editor} title={title} />
           {role === "owner" ? (
             <button
@@ -379,6 +407,14 @@ export function DocumentEditor({ doc, role, owner }: Props) {
       {role === "owner" && (
         <ShareDialog documentId={doc.id} documentTitle={title} open={shareOpen} onClose={() => setShareOpen(false)} />
       )}
+      <HistoryDialog
+        documentId={doc.id}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        canRestore={canEdit}
+        getEditorState={() => ({ version: versionRef.current, busy: dirtyRef.current || inFlightRef.current })}
+        onRestored={handleRestored}
+      />
     </div>
   );
 }

@@ -15,6 +15,13 @@
       "when": 1795194979311,
       "tag": "0001_presence_and_last_editor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795196459213,
+      "tag": "0002_document_versions",
+      "breakpoints": true
     }
   ]
 }
