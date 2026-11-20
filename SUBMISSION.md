@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Live app | LIVE_URL_PLACEHOLDER |
+| Live app | https://ajaia-collab-docs-one.vercel.app |
 | Source code | https://github.com/Huzaifa-Azam/ajaia-collab-docs |
 | Walkthrough video | see [VIDEO_URL.txt](VIDEO_URL.txt) |
 

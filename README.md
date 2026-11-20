@@ -2,7 +2,7 @@
 
 A lightweight collaborative document editor: create and format documents in the browser, import files, and share them with other people as editors or viewers.
 
-**Live demo:** LIVE_URL_PLACEHOLDER
+**Live demo:** https://ajaia-collab-docs-one.vercel.app
 
 Built for the Ajaia AI-native full stack assessment. See [ARCHITECTURE.md](ARCHITECTURE.md) for what I prioritized and why, [AI_WORKFLOW.md](AI_WORKFLOW.md) for how AI was used, and [SUBMISSION.md](SUBMISSION.md) for the full list of deliverables.
 
@@ -81,7 +81,7 @@ There are two layers:
 ```bash
 npm test                    # 46 unit tests, no database needed
 npm run smoke               # 35 end-to-end checks over HTTP against a running app (http://localhost:3000)
-npm run smoke -- LIVE_URL_PLACEHOLDER   # the same checks against the live deployment
+npm run smoke -- https://ajaia-collab-docs-one.vercel.app   # the same checks against the live deployment
 ```
 
 **Unit tests (Vitest)** cover the parts where a bug would hurt most:
