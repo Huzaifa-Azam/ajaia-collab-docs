@@ -6,6 +6,10 @@ A lightweight collaborative document editor: create and format documents in the 
 
 Built for the Ajaia AI-native full stack assessment. See [ARCHITECTURE.md](ARCHITECTURE.md) for what I prioritized and why, [AI_WORKFLOW.md](AI_WORKFLOW.md) for how AI was used, and [SUBMISSION.md](SUBMISSION.md) for the full list of deliverables.
 
+![Editor with presence and a new-version notice](docs/screenshots/05-presence-and-update-notice.png)
+
+More screenshots are in [`docs/screenshots/`](docs/screenshots): sign-in, documents, editor, share dialog, read-only viewer and phone layout.
+
 ## Demo accounts
 
 Sign-in is simulated: open the app, pick an account, no password needed. To see sharing from both sides at once, sign in as a second account in a private window.

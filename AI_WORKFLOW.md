@@ -60,6 +60,7 @@ I used it as a fast pair programmer and kept the product calls: what to build in
     - the "Bob Martinez saved new changes" banner appeared
     - "Show latest" loaded his change
     - Alice's next edit then saved without a conflict
+- **Screenshots from the live site:** the images in `docs/screenshots/` were captured by a headless browser script, signed in as each demo account. Bob's change shows up in Carol's read-only view without a reload.
 - **A specific check:** the editor adds an empty trailing paragraph. If that counted as an edit, merely *opening* a document would save it and cause false conflicts for anyone else with it open. I compared the stored version before and after reloading: it didn't change.
 
-**Not verified:** there are no automated browser tests, and I tested in one browser engine (Chromium). I didn't load-test. Accessibility was checked informally (labels, keyboard use, focus) but not audited. The PDF export relies on the browser's print dialog and a print stylesheet; its output was checked by printing by hand rather than by an automated test.
+**Not verified:** there are no automated browser tests, and I tested in one browser engine (Chromium). I didn't load-test. Accessibility was checked informally (labels, keyboard use, focus) but not audited. The PDF export goes through the browser's print dialog. I verified the print stylesheet by rendering the live editor to PDF in headless Edge, and only the document content appears, but I didn't try every browser's print dialog.
