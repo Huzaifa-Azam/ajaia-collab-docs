@@ -26,6 +26,11 @@ Sign-in is simulated: open the app, pick an account, no password needed. To see 
 - **File import:** upload a file to turn it into a new editable document. Headings, bold, italic, underline and lists are kept.
 - **Persistence:** documents, formatting and sharing live in Postgres and survive refreshes and redeploys.
 
+**Stretch features**, added once the above was done and verified:
+
+- **Presence and live updates:** the editor header shows who else has the document open ("Bob is here too"). When someone saves, others see *"Bob Martinez saved new changes · Show latest"* within about 10 seconds, instead of finding out later through a conflict. Viewers' read-only copies update on their own.
+- **Export:** *Download → Markdown (.md)*, or *PDF* through the browser's print dialog. A print stylesheet hides the app's toolbars and banners, so only the document is printed.
+
 ### Supported import formats
 
 | Format | Notes |
@@ -79,8 +84,8 @@ npm run dev         # http://localhost:3000
 There are two layers:
 
 ```bash
-npm test                    # 46 unit tests, no database needed
-npm run smoke               # 35 end-to-end checks over HTTP against a running app (http://localhost:3000)
+npm test                    # 53 unit tests, no database needed
+npm run smoke               # 40 end-to-end checks over HTTP against a running app (http://localhost:3000)
 npm run smoke -- https://ajaia-collab-docs-one.vercel.app   # the same checks against the live deployment
 ```
 
@@ -89,11 +94,13 @@ npm run smoke -- https://ajaia-collab-docs-one.vercel.app   # the same checks ag
 - **Access rules:** the full owner/editor/viewer permission matrix, plus *404, not 403* for documents that aren't shared with you.
 - **Import pipeline:** `.txt`, `.md` and a real `.docx` (generated in memory) converted with formatting intact; scripts, event handlers and `javascript:` links stripped; wrong type, oversized, empty, non-UTF-8 and corrupted files rejected with the right status codes.
 - **Validation and sanitizing:** share and update payloads, and sanitizing of editor saves.
+- **Export:** HTML to Markdown, including a round trip back through the importer.
 
 **The smoke test** (`scripts/smoke.ts`) signs in as the three demo accounts and drives the real API. It covers:
 
 - creating, saving and reopening with formatting intact, and the 409 on a stale save
 - every role's allowed and forbidden actions, sharing, role changes and access removal
+- presence and new-version notices
 - HTML sanitizing and file import
 
 It deletes everything it creates.
@@ -122,7 +129,9 @@ src/
   lib/
     permissions.ts        who can do what (pure, unit-tested)
     documents.ts          all document and sharing queries, every one access-checked
+    presence.ts           who has a document open, plus new-version detection
     importer.ts           file to sanitized HTML
+    export.ts             HTML to Markdown for downloads
     sanitize.ts           HTML allowlist applied on every write
     validation.ts         request schemas (zod)
     auth/session.ts       signed session cookie

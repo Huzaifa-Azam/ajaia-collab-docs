@@ -5,17 +5,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
-import { ArrowLeft, Check, Eye, LoaderCircle, Share2, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, Eye, LoaderCircle, RefreshCw, Share2, TriangleAlert } from "lucide-react";
 import { ApiError, apiFetch, getErrorMessage } from "@/lib/client/api";
+import { describePresence } from "@/lib/format";
 import { TITLE_MAX_LENGTH } from "@/lib/limits";
 import type { AccessRole } from "@/lib/permissions";
+import { Avatar } from "@/components/Avatar";
 import { ShareDialog } from "@/components/ShareDialog";
+import { ExportMenu } from "./ExportMenu";
 import { Toolbar } from "./Toolbar";
 
 type SaveState = "saved" | "unsaved" | "saving" | "retrying" | "failed" | "conflict";
 
 const AUTOSAVE_DELAY_MS = 800;
 const RETRY_DELAY_MS = 4000;
+const PRESENCE_INTERVAL_MS = 10_000;
+
+type Viewer = { userId: string; name: string };
+type PresenceSnapshot = { viewers: Viewer[]; version: number; title: string; lastEditedBy: string | null };
 
 type Props = {
   doc: { id: string; title: string; content: string; version: number };
@@ -34,6 +41,9 @@ export function DocumentEditor({ doc, role, owner }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [viewers, setViewers] = useState<Viewer[]>([]);
+  const [remoteChange, setRemoteChange] = useState<{ by: string | null } | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Autosave bookkeeping lives in refs so editor callbacks never see stale values.
   const versionRef = useRef(doc.version); // version our copy is based on
@@ -43,6 +53,7 @@ export function DocumentEditor({ doc, role, owner }: Props) {
   const latestHtmlRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveRef = useRef<() => Promise<void>>(async () => {});
+  const loadLatestRef = useRef<() => Promise<void>>(async () => {});
 
   const scheduleSave = useCallback((delay: number) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -109,6 +120,66 @@ export function DocumentEditor({ doc, role, owner }: Props) {
     };
   }, [editor, doc.id, scheduleSave]);
 
+  // Replace the editor's content with the latest saved version (after someone else saved).
+  useEffect(() => {
+    loadLatestRef.current = async () => {
+      if (!editor) return;
+      try {
+        const latest = await apiFetch<{ content: string; version: number; title: string }>(`/api/documents/${doc.id}`);
+        // If the user started typing in the meantime, leave it to the normal save/conflict flow.
+        if (dirtyRef.current || inFlightRef.current) return;
+        // Keep the cursor roughly where it was instead of jumping to the top.
+        const { from, to } = editor.state.selection;
+        editor.commands.setContent(latest.content, { emitUpdate: false });
+        const end = editor.state.doc.content.size;
+        editor.commands.setTextSelection({ from: Math.min(from, end), to: Math.min(to, end) });
+        versionRef.current = latest.version;
+        setRemoteChange(null);
+        if (document.activeElement !== titleInputRef.current) {
+          savedTitleRef.current = latest.title;
+          setTitle(latest.title);
+        }
+      } catch {
+        // Best effort: the banner stays up, so the user can try again.
+      }
+    };
+  }, [editor, doc.id]);
+
+  // Presence heartbeat: shows who else has the document open, and notices newer saved versions
+  // before the user runs into a conflict. Polling keeps it simple and serverless-friendly.
+  useEffect(() => {
+    let stopped = false;
+    async function beat() {
+      try {
+        const snapshot = await apiFetch<PresenceSnapshot>(`/api/documents/${doc.id}/presence`, { method: "POST", body: {} });
+        if (stopped) return;
+        setViewers(snapshot.viewers);
+        if (snapshot.version > versionRef.current && !inFlightRef.current && !blockedRef.current) {
+          if (!canEdit) void loadLatestRef.current(); // viewers simply follow along
+          else if (!dirtyRef.current) setRemoteChange({ by: snapshot.lastEditedBy });
+        }
+        if (snapshot.title !== savedTitleRef.current && document.activeElement !== titleInputRef.current) {
+          savedTitleRef.current = snapshot.title;
+          setTitle(snapshot.title);
+        }
+      } catch {
+        // Presence is best effort; editing works without it.
+      }
+    }
+    void beat();
+    const timer = setInterval(() => void beat(), PRESENCE_INTERVAL_MS);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      void fetch(`/api/documents/${doc.id}/presence`, {
+        method: "POST",
+        keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leaving: true }),
+      }).catch(() => {});
+    };
+  }, [doc.id, canEdit]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -165,8 +236,8 @@ export function DocumentEditor({ doc, role, owner }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#eef0f3]">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
+    <div className="flex min-h-screen flex-col bg-[#eef0f3] print:min-h-0 print:bg-white">
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white print:hidden">
         <div className="flex items-center gap-2 px-2 py-2 sm:px-4">
           <Link
             href="/documents"
@@ -179,6 +250,7 @@ export function DocumentEditor({ doc, role, owner }: Props) {
           <div className="min-w-0 flex-1">
             {canEdit ? (
               <input
+                ref={titleInputRef}
                 aria-label="Document title"
                 value={title}
                 maxLength={TITLE_MAX_LENGTH}
@@ -219,6 +291,21 @@ export function DocumentEditor({ doc, role, owner }: Props) {
               {titleError && <span className="text-red-600">{titleError}</span>}
             </div>
           </div>
+          {viewers.length > 0 && (
+            <div className="flex items-center gap-2" title={viewers.map((v) => v.name).join(", ")}>
+              <div className="flex -space-x-2">
+                {viewers.slice(0, 3).map((viewer) => (
+                  <span key={viewer.userId} className="rounded-full ring-2 ring-white">
+                    <Avatar name={viewer.name} size="sm" />
+                  </span>
+                ))}
+              </div>
+              <span className="hidden text-xs text-gray-600 md:inline">
+                {describePresence(viewers.map((v) => v.name))}
+              </span>
+            </div>
+          )}
+          <ExportMenu editor={editor} title={title} />
           {role === "owner" ? (
             <button
               type="button"
@@ -237,8 +324,24 @@ export function DocumentEditor({ doc, role, owner }: Props) {
         {canEdit && editor && <Toolbar editor={editor} />}
       </header>
 
+      {remoteChange && saveState !== "conflict" && (
+        <div role="status" className="flex items-center gap-3 border-b border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-900 print:hidden">
+          <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+          <p className="flex-1">
+            {remoteChange.by ? `${remoteChange.by} saved new changes.` : "This document has new changes."} Load them
+            before you keep editing.
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadLatestRef.current()}
+            className="rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Show latest
+          </button>
+        </div>
+      )}
       {saveState === "conflict" && (
-        <div role="alert" className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div role="alert" className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 print:hidden">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p className="flex-1">
             This document was changed somewhere else (by another person, or by you in another tab) after you opened
@@ -255,15 +358,15 @@ export function DocumentEditor({ doc, role, owner }: Props) {
         </div>
       )}
       {!canEdit && (
-        <div className="flex items-center gap-2 border-b border-blue-100 bg-blue-50 px-4 py-2 text-sm text-blue-900">
+        <div className="flex items-center gap-2 border-b border-blue-100 bg-blue-50 px-4 py-2 text-sm text-blue-900 print:hidden">
           <Eye className="h-4 w-4 shrink-0" aria-hidden />
           {owner.name} shared this document with you as a viewer, so you can read it but not change it.
         </div>
       )}
 
-      <main className="flex-1 px-2 py-6 sm:px-6 sm:py-8">
+      <main className="flex-1 px-2 py-6 sm:px-6 sm:py-8 print:p-0">
         <div
-          className="mx-auto min-h-[75vh] max-w-[816px] cursor-text rounded-sm bg-white px-6 py-10 shadow-sm ring-1 ring-gray-200 sm:px-16 sm:py-14"
+          className="mx-auto min-h-[75vh] max-w-[816px] cursor-text rounded-sm bg-white px-6 py-10 shadow-sm ring-1 ring-gray-200 sm:px-16 sm:py-14 print:min-h-0 print:max-w-none print:p-0 print:shadow-none print:ring-0"
           onClick={(e) => {
             // Clicking the page margin focuses the end of the document, like a word processor.
             if (e.target === e.currentTarget) editor?.chain().focus("end").run();

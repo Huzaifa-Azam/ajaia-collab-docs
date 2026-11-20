@@ -10,8 +10,8 @@ I used it as a fast pair programmer and kept the product calls: what to build in
 ## Where AI materially sped up the work
 
 - **From brief to plan.** It turned the open-ended prompt into a scoped plan with a minute-by-minute budget: core flows first, a deploy in the first 20 minutes, explicit cuts.
-- **Building the bulk of the code.** About 2,700 lines across the app, tests and scripts, including the API routes, data layer, Drizzle schema and migration, Tiptap toolbar and share dialog. The core app compiled and passed a production build within the first hour. That left time for the parts that need judgment: concurrency, permissions and testing.
-- **Tests I wouldn't have had time to write by hand.** These cover the full permission matrix and import edge cases. One test builds a real `.docx` in memory, so the Word conversion is tested for real rather than mocked. It also wrote a 35-check HTTP smoke test that runs against the live site.
+- **Building the bulk of the code.** About 3,100 lines across the app, tests and scripts, including the API routes, data layer, Drizzle schema and migrations, Tiptap toolbar and share dialog. The core app compiled and passed a production build within the first hour. That left time for the parts that need judgment: concurrency, permissions and testing, and then two stretch features.
+- **Tests I wouldn't have had time to write by hand.** These cover the full permission matrix and import edge cases. One test builds a real `.docx` in memory, so the Word conversion is tested for real rather than mocked. It also wrote a 40-check HTTP smoke test that runs against the live site.
 - **Debugging.** It worked through three problems:
   - an npm peer-dependency conflict (Vitest 5 needs newer Node types)
   - an expired GitHub credential that blocked the first push
@@ -30,20 +30,24 @@ I used it as a fast pair programmer and kept the product calls: what to build in
    - The browser tab didn't show the document's name. Fixed with `generateMetadata`.
    - The conflict banner blamed "someone else" even when the conflict came from the same person's second tab. Reworded.
    - Vercel's functions defaulted to Washington, D.C. while the database is in Singapore. Every query would cross the Pacific, so I pinned the functions to Singapore.
+   - After "Show latest" loaded someone else's changes, the cursor jumped to the top of the document. It now stays roughly where it was.
+   - The first version of the Markdown export put a stray indented blank line after every list item. The unit test written for it failed on its first run, and I fixed the list rule.
 
 ## How I verified correctness, UX quality and reliability
 
 - **Types and build:** strict TypeScript, and a production `next build` passing before each push.
-- **Unit tests:** 46 Vitest tests covering:
+- **Unit tests:** 53 Vitest tests covering:
   - the permissions matrix
   - the import pipeline, including a real `.docx` and XSS stripping
   - request validation and sanitizing of editor saves
-- **End-to-end smoke test:** `npm run smoke` signs in as all three demo accounts and drives the real API. 35 checks covering:
+  - Markdown export, including a round trip through the importer
+- **End-to-end smoke test:** `npm run smoke` signs in as all three demo accounts and drives the real API. 40 checks covering:
   - saving and the 409 on a stale save
   - every role's allowed and forbidden actions, sharing and removal
+  - presence and new-version notices
   - forged cookies, sanitizing and import
 
-  It passed **35/35 locally and against the live deployment**.
+  It passes **40/40 locally and against the live deployment**.
 - **Manual testing in a real browser**, as each account:
   - formatted text with the toolbar and shortcuts, watched the autosave status, reloaded and compared the exact saved HTML
   - used the share dialog, including its error state for an unknown email
@@ -51,6 +55,11 @@ I used it as a fast pair programmer and kept the product calls: what to build in
   - edited one document in two tabs and confirmed the second save was rejected with the conflict banner
   - imported a Markdown file and had a PDF refused
   - checked the layout at phone width (no sideways scrolling)
+  - with Alice's editor open, had a second session as Bob open and save the same document:
+    - Alice's header showed Bob within one heartbeat
+    - the "Bob Martinez saved new changes" banner appeared
+    - "Show latest" loaded his change
+    - Alice's next edit then saved without a conflict
 - **A specific check:** the editor adds an empty trailing paragraph. If that counted as an edit, merely *opening* a document would save it and cause false conflicts for anyone else with it open. I compared the stored version before and after reloading: it didn't change.
 
-**Not verified:** there are no automated browser tests, and I tested in one browser engine (Chromium). I didn't load-test. Accessibility was checked informally (labels, keyboard use, focus) but not audited.
+**Not verified:** there are no automated browser tests, and I tested in one browser engine (Chromium). I didn't load-test. Accessibility was checked informally (labels, keyboard use, focus) but not audited. The PDF export relies on the browser's print dialog and a print stylesheet; its output was checked by printing by hand rather than by an automated test.

@@ -155,6 +155,32 @@ async function main() {
     check("owner can remove access", (await call(alice, "DELETE", `/api/documents/${id}/shares/${carolId}`)).status === 204);
     check("removed person gets 404 again", (await call(carol, "GET", `/api/documents/${id}`)).status === 404);
 
+    console.log("\nPresence and live updates");
+    const aliceBeat = await call(alice, "POST", `/api/documents/${id}/presence`, {});
+    check("a heartbeat returns the current version", aliceBeat.status === 200 && typeof aliceBeat.json?.version === "number", aliceBeat);
+    const bobBeat = await call(bob, "POST", `/api/documents/${id}/presence`, {});
+    check(
+      "people with the document open see each other",
+      bobBeat.json?.viewers?.some((v: { name: string }) => v.name === "Alice Johnson"),
+      bobBeat.json,
+    );
+    const beforeLive = await call(bob, "GET", `/api/documents/${id}`);
+    await call(bob, "PATCH", `/api/documents/${id}`, { content: "<p>Live update from Bob</p>", baseVersion: beforeLive.json?.version });
+    const aliceAfter = await call(alice, "POST", `/api/documents/${id}/presence`, {});
+    check(
+      "others learn there's a newer version and who saved it",
+      aliceAfter.json?.version === beforeLive.json?.version + 1 && aliceAfter.json?.lastEditedBy === "Bob Martinez",
+      aliceAfter.json,
+    );
+    check("people without access can't see presence (404)", (await call(carol, "POST", `/api/documents/${id}/presence`, {})).status === 404);
+    const bobLeaves = await call(bob, "POST", `/api/documents/${id}/presence`, { leaving: true });
+    const afterLeave = await call(alice, "POST", `/api/documents/${id}/presence`, {});
+    check(
+      "closing the editor removes you right away",
+      bobLeaves.status === 204 && !afterLeave.json?.viewers?.some((v: { name: string }) => v.name === "Bob Martinez"),
+      afterLeave.json,
+    );
+
     console.log("\nFile import");
     const imported = await call(alice, "POST", "/api/import", undefined, upload("meeting_notes.md", "# Imported\n\nSome **bold** text.\n\n- one\n- two\n"));
     check("a Markdown file becomes a new document", imported.status === 201, imported);

@@ -21,6 +21,8 @@ export const documents = pgTable(
     content: text("content").notNull().default(""),
     /** Bumped on every content save. Used to reject saves based on a stale copy. */
     version: integer("version").notNull().default(1),
+    /** Who saved the content most recently. Shown to others as "Bob saved new changes". */
+    lastEditedBy: uuid("last_edited_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -43,6 +45,24 @@ export const documentShares = pgTable(
     primaryKey({ columns: [t.documentId, t.userId] }),
     index("document_shares_user_id_idx").on(t.userId),
   ],
+);
+
+/**
+ * Who has a document open right now. Each open editor sends a heartbeat every few seconds;
+ * anyone seen in the last 30 seconds counts as present. Rows are tiny and overwritten in place.
+ */
+export const documentPresence = pgTable(
+  "document_presence",
+  {
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.documentId, t.userId] })],
 );
 
 export type User = typeof users.$inferSelect;

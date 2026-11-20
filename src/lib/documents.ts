@@ -1,20 +1,13 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { cache } from "react";
 import { getDb } from "./db";
-import { documents, documentShares, users } from "./db/schema";
+import { documents, documentShares, users, type Document } from "./db/schema";
 import { AppError } from "./errors";
 import { isUuid } from "./ids";
 import { assertAccess, resolveAccess, type AccessRole, type DocumentAction, type ShareRole } from "./permissions";
 import { sanitizeDocumentHtml } from "./sanitize";
 
-export type DocumentWithAccess = {
-  id: string;
-  title: string;
-  content: string;
-  version: number;
-  ownerId: string;
-  createdAt: Date;
-  updatedAt: Date;
+export type DocumentWithAccess = Document & {
   role: AccessRole;
   owner: { id: string; name: string; email: string };
 };
@@ -81,6 +74,7 @@ export async function createDocument(ownerId: string, input: { title?: string; c
     .insert(documents)
     .values({
       ownerId,
+      lastEditedBy: ownerId,
       title: input.title ?? "Untitled document",
       content: input.content ? sanitizeDocumentHtml(input.content) : "",
     })
@@ -109,7 +103,12 @@ export async function saveDocumentContent(documentId: string, userId: string, co
   const db = getDb();
   const [saved] = await db
     .update(documents)
-    .set({ content: sanitizeDocumentHtml(content), version: sql`${documents.version} + 1`, updatedAt: new Date() })
+    .set({
+      content: sanitizeDocumentHtml(content),
+      version: sql`${documents.version} + 1`,
+      lastEditedBy: userId,
+      updatedAt: new Date(),
+    })
     .where(and(eq(documents.id, documentId), eq(documents.version, baseVersion)))
     .returning({ version: documents.version, updatedAt: documents.updatedAt });
   if (!saved) {

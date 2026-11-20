@@ -8,7 +8,7 @@ With a 225-minute timebox, I aimed for a small product that is **trustworthy** r
 2. **Access control that is real.** Sharing is enforced on the server for every request, not just by hiding buttons. One permission module decides everything, and it is unit-tested.
 3. **Safe file handling.** Imports are converted on the server, checked by type, size, encoding and file signature, and sanitized before they are stored.
 
-Everything else (real login, real-time co-editing, comments, history) was deliberately cut and is listed at the end.
+Once those three were done and verified, the remaining time went to two stretch features: **presence with new-version notices**, and **export**. Everything else (real login, character-level co-editing, comments, history) was deliberately cut and is listed at the end.
 
 ## Shape of the system
 
@@ -35,6 +35,9 @@ One Next.js app serves both the UI and the API, so there is one thing to deploy 
 | `users` | `id`, `email` (unique), `name` | Seeded demo accounts |
 | `documents` | `id`, `owner_id`, `title`, `content`, `version`, `updated_at` | Ownership lives on the document row |
 | `document_shares` | (`document_id`, `user_id`) primary key, `role` (`viewer` / `editor`) | One row per person a document is shared with |
+| `document_presence` | (`document_id`, `user_id`) primary key, `last_seen_at` | One row per person with the document open, refreshed by heartbeats |
+
+`documents.last_edited_by` records who saved last, so others can be told "Bob saved new changes".
 
 Foreign keys cascade, so deleting a document removes its shares. Migrations are plain SQL in `drizzle/`.
 
@@ -43,6 +46,8 @@ Foreign keys cascade, so deleting a document removes its shares. Migrations are 
 **Content is stored as sanitized HTML, not ProseMirror JSON.** HTML is the editor's native import/export format, and it is what the file converters (mammoth for `.docx`, marked for Markdown) produce, so import needs no extra transformation step. Every write goes through one allowlist (`sanitize.ts`) that matches exactly what the editor can display, so stored content can never carry scripts, whatever the client sends. *Tradeoff:* real-time co-editing (CRDTs such as Yjs) would need a structured format, so that feature would mean a storage migration.
 
 **Optimistic concurrency instead of real-time collaboration.** Each content save sends the `version` it started from, and the update only applies `WHERE version = baseVersion`. If someone else saved first, the server returns **409** and the editor stops saving and asks you to reload. That is far simpler than live co-editing and still prevents the worst outcome, silently losing someone's work. Renames don't bump the version, so renaming never conflicts with typing.
+
+**Presence by polling, not sockets.** Each open editor sends a heartbeat every 10 seconds, and anyone seen in the last 30 seconds is shown as present. The same response carries the document's current version and who saved it last. So within seconds of a save, editors get a "Show latest" prompt and viewers' copies update on their own, instead of finding out through a conflict. Polling fits Vercel's serverless model, which has no long-lived connections. *Tradeoff:* up to about 10 seconds of delay, and one small request every 10 seconds per open editor. Closing the editor sends a "leaving" request, so people disappear straight away rather than after the 30-second window.
 
 **Simulated login, real authorization.** Reviewers pick a seeded account; the server issues an HS256-signed, HTTP-only, `SameSite=Lax` cookie. Every request resolves the user from that cookie on the server, and every document operation runs `assertAccess()`. Documents that aren't shared with you return **404, not 403**, so IDs can't be probed. A real identity provider would replace only `auth/session.ts` and the login page.
 
@@ -58,7 +63,7 @@ Foreign keys cascade, so deleting a document removes its shares. Migrations are 
 
 | Cut | Why |
 |---|---|
-| Real-time co-editing and presence | Needs a CRDT and a persistent socket server (Vercel functions don't hold connections). The version check covers the safety part. |
+| Character-level real-time co-editing | Merging two people's keystrokes needs a CRDT (such as Yjs) and a persistent socket server, which Vercel functions can't hold. Presence, new-version notices and the version check cover awareness and safety. |
 | Real authentication | The brief allows simulated users. The session boundary is isolated, so a real provider is a contained change. |
 | Comments, suggestions, version history | Valuable, but each is its own feature. I preferred finishing the core flows properly. |
 | Attachments, images and tables in documents | Need blob storage and a bigger editor schema. Imports keep text and formatting only. |
@@ -68,7 +73,7 @@ Foreign keys cascade, so deleting a document removes its shares. Migrations are 
 ## With another 2-4 hours
 
 1. **Version history:** a `document_versions` snapshot table written every few minutes of editing, with a restore button.
-2. **Playwright end-to-end test** of the share flow: Alice shares with Bob, Bob edits, Carol is read-only.
-3. **Export** to Markdown and PDF (the content is already HTML).
-4. **Presence indicators:** "Bob is viewing" via short polling first, a hosted real-time provider later.
+2. **Playwright end-to-end test** of the share flow in a real browser: Alice shares with Bob, Bob edits, Carol is read-only.
+3. **Character-level co-editing:** Yjs through a hosted provider (such as Liveblocks or Y-Sweet), replacing the version check and polling.
+4. **Comments** anchored to a text selection.
 5. **Real sign-in** (email magic link) and rate limiting on the import endpoint.

@@ -58,3 +58,8 @@ body {
   color: #9ca3af;
   pointer-events: none;
 }
+
+@media print {
+  body { background: #fff; }
+  @page { margin: 18mm; }
+}
