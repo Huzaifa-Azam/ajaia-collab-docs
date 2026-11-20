@@ -2,7 +2,7 @@
 
 ## Tools
 
-I used **Claude Code** (Anthropic's coding agent, running Claude Opus 5.5 in the Claude desktop app) as a pair programmer, working directly in the project folder. It:
+I used **Claude** (Anthropic), through Claude Code in the Claude desktop app, as a pair programmer, working directly in the project folder. It:
 
 - planned with me
 - wrote most of the code, tests and docs
