@@ -1,20 +1,28 @@
 # AI workflow note
 
-## Tools
+## How I worked: one agent, with me directing
 
-I used **Claude Code** (Anthropic's coding agent, running Claude Opus 5.5 in the Claude desktop app) as a pair programmer, working directly in the project folder. It:
+I used **Claude Code** (Anthropic's coding agent, running Claude Opus 5.5 in the Claude desktop app) as an **autonomous agent**, not just a chat assistant. It worked directly in the project with a terminal, git and a browser, and carried whole tasks end to end:
 
-- planned with me
-- wrote most of the code, tests and docs
-- ran the builds, tests and database scripts
-- tested the UI in a built-in browser
+- scaffolding and building features
+- writing and running tests
+- deploying, checking CI and smoke-testing the live site
 
-I made the product calls: scope, stack, what to deprioritize, and whether each result was good enough to keep.
+My role was direction and judgment:
 
-## Where AI materially sped up the work
+- **Plan first, then delegate whole tasks.** The agent turned the brief into a time-boxed plan and task list. I approved it, then handed over complete tasks, for example "sharing with server-side permissions, with tests". I reviewed the results: the diffs, the test output and the running app.
+- **I kept the decisions that matter:** scope, stack, what to deprioritize, and anything outward-facing.
+- **Accounts and credentials stayed with me:**
+  - I created the GitHub, Vercel and Neon accounts myself.
+  - Credentials never went through the chat. I pasted the database URL into the settings myself, and the agent generated the session secret straight into the git-ignored env file.
+  - Before submission, the agent audited the whole git history to prove no secret was ever committed.
+- **Background work in parallel:** long checks, such as the full CI pipeline in a fresh clone, ran in the background while the agent carried on with other tasks.
+- **Course corrections:** I redirected it several times. For example, I paused feature work to check the submission against the brief's constraints and evaluation criteria.
 
-- **From brief to plan in minutes:** a scoped plan with a time budget, and a live deployment within the first hour.
-- **Most of the roughly 3,000 lines** of app code, tests and scripts. The core flows compiled and passed a production build within the first hour, which left time for the parts that need judgment: concurrency, permissions and testing.
+## Where it materially sped up the work
+
+- **From brief to plan in minutes,** and a live deployment within the first hour.
+- **Most of the roughly 3,000 lines** of code, tests and scripts. The core flows passed a production build within the first hour, which left time for the parts that need judgment: concurrency, permissions and testing.
 - **Tests I wouldn't have had time to write by hand:**
   - the full permission matrix
   - import edge cases, including a real `.docx` built in memory
@@ -55,3 +63,12 @@ I made the product calls: scope, stack, what to deprioritize, and whether each r
 - **One deliberate check:** opening a document must not save it, or two readers would conflict. I confirmed the stored version doesn't change when a document is opened.
 
 **Not verified:** no automated browser tests; tested in one browser engine (Chromium); no load testing; accessibility checked only informally.
+
+## Scaling up: multiple agents on a bigger task
+
+This task was small and tightly coupled: one database schema, one UI. A single agent with fast feedback loops was the efficient choice; coordinating several would have cost more in merging than it saved. On a bigger project I'd split the work across agents the way I'd split it across a team:
+
+- **Parallel builders on independent workstreams** (for example import, sharing and permissions, editor UX). Each works in its own git worktree and branch, and merges through pull requests gated by CI.
+- **A reviewer agent** with fresh context, checking each diff for bugs and security issues.
+- **A verifier agent** running the end-to-end and browser tests.
+- **Me as the coordinator:** owning the plan, the shared contracts (API shapes and the database schema), and the merge and deploy decisions.
