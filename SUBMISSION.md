@@ -2,6 +2,8 @@
 
 A lightweight collaborative document editor: write and format documents in the browser, import files, and share them with others as editors or viewers.
 
+**Built with** TypeScript and Next.js, the Tiptap editor, and a Postgres database (Neon), deployed on Vercel. The demo accounts and documents are created by a seed script (`scripts/seed.ts`).
+
 | | |
 |---|---|
 | **Live app** | https://ajaia-collab-docs-one.vercel.app |
