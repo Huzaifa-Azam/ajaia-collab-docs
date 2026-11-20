@@ -43,3 +43,6 @@ next-env.d.ts
 
 # assessment brief (kept local, not published)
 docs/ASSIGNMENT.md
+
+# local tooling
+.claude/

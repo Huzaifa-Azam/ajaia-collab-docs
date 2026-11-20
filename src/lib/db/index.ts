@@ -1,6 +1,7 @@
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { normalizeDatabaseUrl } from "./url";
 
 type Db = PostgresJsDatabase<typeof schema>;
 
@@ -15,7 +16,7 @@ export function getDb(): Db {
     throw new Error("DATABASE_URL is not set. Copy .env.example to .env.local and add a Postgres connection string.");
   }
   // prepare: false keeps us compatible with pooled (PgBouncer) connection strings such as Neon's.
-  const client = postgres(url, { prepare: false, max: 5 });
+  const client = postgres(normalizeDatabaseUrl(url), { prepare: false, max: 5 });
   globalForDb.__ajaiaDb = drizzle(client, { schema });
   return globalForDb.__ajaiaDb;
 }

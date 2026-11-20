@@ -3,7 +3,7 @@ import { getDb } from "./db";
 import { documents, documentShares, users } from "./db/schema";
 import { AppError } from "./errors";
 import { isUuid } from "./ids";
-import { can, resolveAccess, type AccessRole, type DocumentAction, type ShareRole } from "./permissions";
+import { assertAccess, resolveAccess, type AccessRole, type DocumentAction, type ShareRole } from "./permissions";
 import { sanitizeDocumentHtml } from "./sanitize";
 
 export type DocumentWithAccess = {
@@ -34,19 +34,9 @@ export async function getDocumentWithAccess(documentId: string, userId: string):
   return { ...row.doc, role, owner: { id: row.doc.ownerId, name: row.ownerName, email: row.ownerEmail } };
 }
 
-const FORBIDDEN_MESSAGES: Record<DocumentAction, string> = {
-  view: "You don't have access to this document.",
-  edit: "You have view-only access to this document.",
-  share: "Only the owner can change who has access.",
-  delete: "Only the owner can delete this document.",
-};
-
+/** Every document operation starts here: load with the caller's role, then check the action. */
 export async function requireDocumentAccess(documentId: string, userId: string, action: DocumentAction) {
-  const doc = await getDocumentWithAccess(documentId, userId);
-  // Same 404 for "doesn't exist" and "not shared with you", so document IDs can't be probed.
-  if (!doc) throw new AppError(404, "not_found", "Document not found, or it hasn't been shared with you.");
-  if (!can(doc.role, action)) throw new AppError(403, "forbidden", FORBIDDEN_MESSAGES[action]);
-  return doc;
+  return assertAccess(await getDocumentWithAccess(documentId, userId), action);
 }
 
 export async function listDocumentsForUser(userId: string) {

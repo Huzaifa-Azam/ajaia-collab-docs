@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../src/lib/db/schema";
+import { normalizeDatabaseUrl } from "../src/lib/db/url";
 import { DEMO_USERS } from "../src/lib/demo-users";
 
 try {
@@ -62,7 +63,7 @@ async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set. Add it to .env.local first.");
 
-  const client = postgres(url, { prepare: false, max: 1 });
+  const client = postgres(normalizeDatabaseUrl(url), { prepare: false, max: 1 });
   const db = drizzle(client, { schema });
   try {
     await db
