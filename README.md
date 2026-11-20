@@ -2,148 +2,103 @@
 
 A lightweight collaborative document editor: create and format documents in the browser, import files, and share them with other people as editors or viewers.
 
-**Live demo:** https://ajaia-collab-docs-one.vercel.app
+**Live:** https://ajaia-collab-docs-one.vercel.app. Sign in with any demo account; there are no passwords:
 
-Built for the Ajaia AI-native full stack assessment. See [ARCHITECTURE.md](ARCHITECTURE.md) for what I prioritized and why, [AI_WORKFLOW.md](AI_WORKFLOW.md) for how AI was used, and [SUBMISSION.md](SUBMISSION.md) for the full list of deliverables.
+- `alice@example.com`
+- `bob@example.com`
+- `carol@example.com`
 
-![Editor with presence and a new-version notice](docs/screenshots/05-presence-and-update-notice.png)
+Reviewers: start with [SUBMISSION.md](SUBMISSION.md). Design notes are in [ARCHITECTURE.md](ARCHITECTURE.md), and AI usage in [AI_WORKFLOW.md](AI_WORKFLOW.md).
 
-More screenshots are in [`docs/screenshots/`](docs/screenshots): sign-in, documents, editor, share dialog, read-only viewer and phone layout.
+![Editor showing who else is here and a "new changes" notice](docs/screenshots/05-presence-and-update-notice.png)
 
-## Demo accounts
+## Features
 
-Sign-in is simulated: open the app, pick an account, no password needed. To see sharing from both sides at once, sign in as a second account in a private window.
-
-| Account | Email | What it shows |
-|---|---|---|
-| Alice Johnson | alice@example.com | Owns "Welcome to Ajaia Docs" (shared with Bob and Carol) and a private "Q1 launch plan" |
-| Bob Martinez | bob@example.com | Can **edit** Alice's welcome doc; owns "Team retro notes", shared with Alice as view-only |
-| Carol Chen | carol@example.com | Can only **view** Alice's welcome doc |
-
-## What works
-
-- **Documents:** create, rename (click the title), delete (owner only), and reopen. The home page separates **My documents** from **Shared with me** and shows the owner, your access level, and who edited last.
-- **Rich-text editing** (Tiptap): bold, italic, underline, strikethrough, headings 1 to 3, bulleted and numbered lists, quotes, undo/redo and clear formatting, from the toolbar or keyboard shortcuts.
-- **Autosave:** changes save about a second after you stop typing (or straight away with `Ctrl+S`), with a visible status: *Saving… / All changes saved / Couldn't save, retrying*. If you leave the page with unsaved edits, they're sent before it closes.
-- **Overwrite protection:** every save carries the version it was based on. If someone else saved in between, the save is rejected (HTTP 409) and you're asked to reload, instead of their work being silently overwritten.
-- **Sharing:** the owner shares by email as **Can edit** or **Can view**, changes roles and removes access. Viewers get a read-only editor, and the API rejects their writes too.
-- **File import:** upload a file to turn it into a new editable document. Headings, bold, italic, underline and lists are kept.
-- **Persistence:** documents, formatting and sharing live in Postgres and survive refreshes and redeploys.
-
-**Stretch features**, added once the above was done and verified. A version history prototype was also built but deliberately not shipped (branch `feature/version-history`); [ARCHITECTURE.md](ARCHITECTURE.md) explains why.
-
-- **Presence and live updates:** the editor header shows who else has the document open ("Bob is here too"). When someone saves, others see *"Bob Martinez saved new changes · Show latest"* within about 10 seconds, instead of finding out later through a conflict. Viewers' read-only copies update on their own.
-- **Export:** *Download → Markdown (.md)*, or *PDF* through the browser's print dialog. A print stylesheet hides the app's toolbars and banners, so only the document is printed.
+- **Documents:** create, rename, delete and reopen. The home page separates *My documents* from *Shared with me*, with the owner, your access level and who edited last.
+- **Editor:** bold, italic, underline, strikethrough, headings 1-3, bulleted and numbered lists, quotes and undo/redo, from the toolbar or keyboard shortcuts.
+- **Autosave:**
+  - saves about a second after you stop typing, or straight away with `Ctrl+S`
+  - shows a visible save status
+  - rejects a save based on an outdated copy, so nobody's work is silently overwritten
+- **Sharing:** the owner shares by email as *Can edit* or *Can view*, changes roles and removes access. The API enforces this, not just the UI.
+- **Import:** turn a file into a new document (formats below).
+- **Stretch:** presence ("Bob is here too") with "new changes" notices, and export to Markdown or PDF.
 
 ### Supported import formats
 
 | Format | Notes |
 |---|---|
-| `.txt` | UTF-8 text. Blank lines become paragraphs. |
-| `.md` / `.markdown` | Headings, emphasis, lists, quotes, code and links. |
-| `.docx` | Converted with mammoth. Images and complex layout (tables, columns) aren't imported. |
+| `.txt` | UTF-8 text; blank lines become paragraphs |
+| `.md` / `.markdown` | Headings, emphasis, lists, quotes, code and links |
+| `.docx` | Text, headings, emphasis and lists. Images and tables aren't imported |
 
-Files up to **2 MB**. Anything else (PDF, images, `.doc`) is rejected with a clear message, both in the browser and on the server.
+Files up to **2 MB**. Any other type is rejected with a clear message.
 
-## Run it locally
+## Run locally
 
-**You need:** Node.js 20.9 or newer (tested on 22), and a Postgres database. A free [Neon](https://neon.tech) database works, as does a local Postgres 14+.
+You need Node.js 20.9 or newer (tested on 22) and a Postgres database. A free [Neon](https://neon.tech) database works, or a local Postgres 14+.
 
 ```bash
 npm install
-cp .env.example .env.local        # Windows PowerShell: Copy-Item .env.example .env.local
+cp .env.example .env.local      # PowerShell: Copy-Item .env.example .env.local
 ```
 
-Open `.env.local` and set:
-
+Set two values in `.env.local`:
 - `DATABASE_URL`: your Postgres connection string
-- `SESSION_SECRET`: any random string of 32+ characters (`.env.example` shows how to generate one)
+- `SESSION_SECRET`: 32 or more random characters
 
-Then create the tables and demo data, and start the app:
+Then:
 
 ```bash
-npm run db:setup    # runs migrations, then seeds the demo accounts and documents
+npm run db:setup    # creates the tables, then seeds the demo accounts and documents
 npm run dev         # http://localhost:3000
 ```
 
-`npm run db:seed` is safe to run again: it won't create duplicates.
+Other scripts: `npm run lint`, `npm run typecheck`, `npm run db:migrate`, and `npm run db:generate` after changing `src/lib/db/schema.ts`.
 
-### Scripts
-
-| Script | What it does |
-|---|---|
-| `npm run dev` | Start the dev server |
-| `npm run build` / `npm start` | Production build / serve it |
-| `npm test` | Run the Vitest suite |
-| `npm run smoke [-- URL]` | End-to-end API checks against a running app |
-| `npm run typecheck` | TypeScript check |
-| `npm run lint` | ESLint |
-| `npm run db:generate` | Create a migration after changing `src/lib/db/schema.ts` |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:seed` | Create demo accounts and documents |
-| `npm run db:setup` | `db:migrate` then `db:seed` |
-| `npm run db:reset-demo` | Delete and recreate the demo accounts' documents |
-
-## Tests
-
-There are two layers:
+## Tests and CI
 
 ```bash
-npm test                    # 53 unit tests, no database needed
-npm run smoke               # 40 end-to-end checks over HTTP against a running app (http://localhost:3000)
-npm run smoke -- https://ajaia-collab-docs-one.vercel.app   # the same checks against the live deployment
+npm test                    # 53 unit tests (no database needed)
+npm run smoke               # 40 end-to-end HTTP checks against http://localhost:3000
+npm run smoke -- https://ajaia-collab-docs-one.vercel.app    # the same checks against the live site
 ```
 
-**Unit tests (Vitest)** cover the parts where a bug would hurt most:
+- **Unit tests** cover:
+  - the permission rules, including 404 rather than 403 for documents you can't see
+  - file import, including a real `.docx` and malicious HTML
+  - validation and export
+- **The smoke test** signs in as all three accounts and drives the real API. It checks saving, the rejection of outdated saves, every role's permissions, sharing, presence and import, then deletes what it created.
+- **CI** (GitHub Actions) runs typecheck, lint, the unit tests and a production build on every push.
 
-- **Access rules:** the full owner/editor/viewer permission matrix, plus *404, not 403* for documents that aren't shared with you.
-- **Import pipeline:** `.txt`, `.md` and a real `.docx` (generated in memory) converted with formatting intact; scripts, event handlers and `javascript:` links stripped; wrong type, oversized, empty, non-UTF-8 and corrupted files rejected with the right status codes.
-- **Validation and sanitizing:** share and update payloads, and sanitizing of editor saves.
-- **Export:** HTML to Markdown, including a round trip back through the importer.
+After testing by hand, `npm run db:reset-demo` puts the demo documents back to their original state.
 
-**The smoke test** (`scripts/smoke.ts`) signs in as the three demo accounts and drives the real API. It covers:
+## Deploy
 
-- creating, saving and reopening with formatting intact, and the 409 on a stale save
-- every role's allowed and forbidden actions, sharing, role changes and access removal
-- presence and new-version notices
-- HTML sanitizing and file import
-
-It deletes everything it creates.
-
-After manual testing, `npm run db:reset-demo` puts the demo documents back to their original state.
-
-**CI:** GitHub Actions (`.github/workflows/ci.yml`) runs typecheck, lint, the unit tests and a production build on every push to `main` and on pull requests.
-
-## Deploying
-
-The live demo runs on **Vercel** (free Hobby plan) with **Neon Postgres** (free plan):
+The live demo runs on Vercel (free Hobby plan) with Neon Postgres (free plan):
 
 1. Create a Neon project and copy its pooled connection string.
-2. Import the GitHub repo in Vercel and add two environment variables: `DATABASE_URL` and `SESSION_SECRET`. No build settings need changing.
-3. Run `npm run db:setup` once against that database, with its `DATABASE_URL` in `.env.local`.
+2. Import the GitHub repo in Vercel, and set `DATABASE_URL` and `SESSION_SECRET`.
+3. Run `npm run db:setup` once against that database.
 
-Every push to `main` redeploys. `vercel.json` pins the functions to Singapore (`sin1`), the same region as the Neon database: each page makes a few queries, so keeping the app next to the database matters more than keeping it next to the visitor.
+`vercel.json` pins the functions to Singapore (`sin1`), next to the database.
 
 ## Project layout
 
 ```
 src/
-  app/
-    api/                  REST endpoints: documents, shares, import, auth
-    documents/            home page and editor page
-    login/                demo account picker
-  components/             UI (editor and toolbar, share dialog, import button, ...)
+  app/                  pages (login, documents, editor) and API routes under app/api
+  components/           UI: editor and toolbar, share dialog, import button, ...
   lib/
-    permissions.ts        who can do what (pure, unit-tested)
-    documents.ts          all document and sharing queries, every one access-checked
-    presence.ts           who has a document open, plus new-version detection
-    importer.ts           file to sanitized HTML
-    export.ts             HTML to Markdown for downloads
-    sanitize.ts           HTML allowlist applied on every write
-    validation.ts         request schemas (zod)
-    auth/session.ts       signed session cookie
-    db/                   Drizzle schema and client
-drizzle/                  SQL migrations
-scripts/seed.ts           demo data
-tests/                    Vitest suite
+    permissions.ts      who can do what (pure, unit-tested)
+    documents.ts        document and sharing queries, every one access-checked
+    presence.ts         who has a document open, plus new-version detection
+    importer.ts         file to sanitized HTML
+    sanitize.ts         HTML allowlist, applied on every write
+    validation.ts       request schemas (zod)
+    auth/session.ts     signed session cookie
+    db/                 Drizzle schema and client
+drizzle/                SQL migrations
+scripts/                seed data and the smoke test
+tests/                  unit tests
 ```
