@@ -30,15 +30,20 @@ No passwords. On the sign-in page, click an account. Use a private window to be 
 
 ## What's included
 
+The Google Drive folder contains:
+
 | Item | Description |
 |---|---|
+| `SUBMISSION.md` | This file |
+| `LIVE_URL.txt` | The live product URL |
+| `VIDEO_URL.txt` | Link to the 3-5 minute walkthrough video |
 | `README.md` | Features, supported file types, local setup and run instructions, tests, deployment |
 | `ARCHITECTURE.md` | Architecture note: what I prioritized, key decisions and tradeoffs, what I cut |
 | `AI_WORKFLOW.md` | AI workflow note: tools, where AI helped, what I changed or rejected, how I verified |
-| `SUBMISSION.md` | This file |
-| `VIDEO_URL.txt` | Link to the 3-5 minute walkthrough video |
-| `docs/screenshots/` | 8 screenshots of the live app: sign-in, documents, editor, share dialog, presence and update notice, read-only viewer, phone layout |
-| `src/`, `tests/`, `drizzle/`, `scripts/` and config files | Full source code, unit tests, SQL migrations, seed script and end-to-end smoke test |
+| `screenshots/` | 8 screenshots of the live app: sign-in, documents, editor, share dialog, presence and update notice, read-only viewer, phone layout |
+| `ajaia-collab-docs-source.zip` | Full source code: app, unit tests, SQL migrations, seed script and end-to-end smoke test. Identical to the GitHub repository's `main` branch. |
+
+The same documents are in the root of the source code and the GitHub repository; the screenshots are under `docs/screenshots/`.
 
 ## Status
 

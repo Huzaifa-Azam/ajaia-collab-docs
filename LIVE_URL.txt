@@ -1,0 +1,3 @@
+Live product: https://ajaia-collab-docs-one.vercel.app
+
+Sign in with any demo account (no password): alice@example.com, bob@example.com, carol@example.com
