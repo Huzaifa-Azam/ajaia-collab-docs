@@ -48,6 +48,11 @@ One Next.js app serves the UI and the API, so there is one thing to deploy. Page
   - One permissions module decides every action. Documents that aren't shared with you return **404 rather than 403**, so IDs can't be probed.
   - A real identity provider would only replace the session module and the login page.
 - **Import on the server.** The browser checks the type and size for quick feedback, but the server repeats every check: extension, size, the `.docx` file signature, UTF-8 encoding, then conversion and sanitizing. Errors map to proper status codes (415, 413, 400) with readable messages. Images aren't supported. Rather than vanishing silently, each one becomes a visible "[Image not imported: …]" note, and the UI says so under the Import button.
+- **Validation and errors.**
+  - Every API route validates its input (zod).
+  - Failures always come back as `{ error: { code, message } }` with the right status: 400, 401, 403, 404, 409, 413 or 415.
+  - The UI shows those messages where they happen: the share dialog, import, and the save status.
+  - Pages have error and not-found screens.
 - **Hosting.**
   - Vercel and Neon, both on free plans.
   - Neon wakes up by itself after being idle. Free Supabase projects pause after a week and would risk a dead demo.
