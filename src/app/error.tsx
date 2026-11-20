@@ -23,6 +23,8 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           >
             Try again
           </button>
+          {/* Deliberately a full page load, not client-side navigation: after an error it resets any broken client state. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/documents" className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50">
             Go to documents
           </a>
