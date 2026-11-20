@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { cache } from "react";
 import { getDb } from "./db";
 import { documents, documentShares, users, type Document } from "./db/schema";
@@ -41,15 +42,19 @@ export async function requireDocumentAccess(documentId: string, userId: string, 
 
 export async function listDocumentsForUser(userId: string) {
   const db = getDb();
+  const lastEditor = alias(users, "last_editor");
   const [owned, shared] = await Promise.all([
     db
       .select({
         id: documents.id,
         title: documents.title,
         updatedAt: documents.updatedAt,
+        lastEditedById: documents.lastEditedBy,
+        lastEditedByName: lastEditor.name,
         shareCount: sql<number>`(select count(*)::int from ${documentShares} where ${documentShares.documentId} = ${documents.id})`,
       })
       .from(documents)
+      .leftJoin(lastEditor, eq(lastEditor.id, documents.lastEditedBy))
       .where(eq(documents.ownerId, userId))
       .orderBy(desc(documents.updatedAt)),
     db
@@ -57,12 +62,15 @@ export async function listDocumentsForUser(userId: string) {
         id: documents.id,
         title: documents.title,
         updatedAt: documents.updatedAt,
+        lastEditedById: documents.lastEditedBy,
+        lastEditedByName: lastEditor.name,
         role: documentShares.role,
         ownerName: users.name,
       })
       .from(documentShares)
       .innerJoin(documents, eq(documents.id, documentShares.documentId))
       .innerJoin(users, eq(users.id, documents.ownerId))
+      .leftJoin(lastEditor, eq(lastEditor.id, documents.lastEditedBy))
       .where(eq(documentShares.userId, userId))
       .orderBy(desc(documents.updatedAt)),
   ]);

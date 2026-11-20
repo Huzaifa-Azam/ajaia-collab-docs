@@ -26,16 +26,19 @@ I used it as a fast pair programmer and kept the product calls: what to build in
 5. **Storage format.** I considered storing ProseMirror JSON and chose sanitized HTML instead, because it keeps import, export and server-side sanitizing simple (see ARCHITECTURE.md).
 6. **Restructured for testability.** The first draft had the 404-vs-403 rule inline in the data layer. I moved it into a pure `assertAccess()` function so it could be unit-tested rather than trusted.
 7. **Database URL handling.** Neon's connection string includes `channel_binding=require`. Rather than assume the driver handles it, it read postgres.js's source and confirmed that unknown URL options are forwarded to the server as settings, which Postgres rejects. I added a small normalizer, with a test.
-8. **Fixes that came from testing, not from the first draft:**
+8. **A scope check against the brief.** Partway through building a fourth stretch item (version history), I re-read the constraints: "one small enhancement", "keep the project intentionally scoped". I parked the working prototype on a branch instead of shipping it, and spent the time on CI and quality fixes.
+9. **Fixes that came from testing, not from the first draft:**
    - The browser tab didn't show the document's name. Fixed with `generateMetadata`.
    - The conflict banner blamed "someone else" even when the conflict came from the same person's second tab. Reworded.
    - Vercel's functions defaulted to Washington, D.C. while the database is in Singapore. Every query would cross the Pacific, so I pinned the functions to Singapore.
    - After "Show latest" loaded someone else's changes, the cursor jumped to the top of the document. It now stays roughly where it was.
    - The first version of the Markdown export put a stray indented blank line after every list item. The unit test written for it failed on its first run, and I fixed the list rule.
+   - Pressing Enter in a new document's title was meant to move the cursor into the body, but in a background tab the text kept going into the title. Tiptap's focus command waits for an animation frame, and browsers pause those in hidden tabs. I switched to ProseMirror's synchronous focus and re-tested.
 
 ## How I verified correctness, UX quality and reliability
 
 - **Types and build:** strict TypeScript, and a production `next build` passing before each push.
+- **CI:** GitHub Actions runs typecheck, lint, unit tests and a production build on every push. I first ran the same pipeline in a fresh clone, to be sure it doesn't depend on anything on my machine.
 - **Unit tests:** 53 Vitest tests covering:
   - the permissions matrix
   - the import pipeline, including a real `.docx` and XSS stripping

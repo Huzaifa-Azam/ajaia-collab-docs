@@ -98,12 +98,14 @@ async function main() {
 
     const [welcome] = await db
       .insert(schema.documents)
-      .values({ ownerId: alice.id, title: "Welcome to Ajaia Docs", content: WELCOME.trim() })
+      .values({ ownerId: alice.id, lastEditedBy: alice.id, title: "Welcome to Ajaia Docs", content: WELCOME.trim() })
       .returning();
-    await db.insert(schema.documents).values({ ownerId: alice.id, title: "Q1 launch plan", content: LAUNCH_PLAN.trim() });
+    await db
+      .insert(schema.documents)
+      .values({ ownerId: alice.id, lastEditedBy: alice.id, title: "Q1 launch plan", content: LAUNCH_PLAN.trim() });
     const [retro] = await db
       .insert(schema.documents)
-      .values({ ownerId: bob.id, title: "Team retro notes", content: RETRO.trim() })
+      .values({ ownerId: bob.id, lastEditedBy: bob.id, title: "Team retro notes", content: RETRO.trim() })
       .returning();
 
     await db.insert(schema.documentShares).values([

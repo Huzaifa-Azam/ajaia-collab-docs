@@ -59,10 +59,13 @@ The same documents are in the root of the source code and the GitHub repository;
 - **Stretch: presence and live updates.** You can see who else has a document open. Others learn within about 10 seconds that someone saved, with a "Show latest" prompt, and viewers' copies update on their own.
 - **Stretch: export** to Markdown, or to PDF through the print dialog
 - 53 unit tests (`npm test`), plus a 40-check end-to-end smoke test that passes against the live deployment (`npm run smoke -- <url>`)
+- CI on every push (GitHub Actions): typecheck, lint, unit tests and production build
+
+**On scope:** the brief suggests one small stretch enhancement. Viewer/editor roles were part of the sharing design from the start. Presence and export were added only after the core was done and verified. Version history was prototyped but deliberately left unshipped (branch `feature/version-history`).
 
 ### Deliberately not built
 
-Character-level real-time co-editing, real authentication, comments, version history, attachments and images, public link sharing. The reasons are in [ARCHITECTURE.md](ARCHITECTURE.md#deliberately-not-built).
+Character-level real-time co-editing, real authentication, comments, attachments and images, public link sharing, and shipping version history (prototype only). The reasons are in [ARCHITECTURE.md](ARCHITECTURE.md#deliberately-not-built).
 
 ### Known limitations
 
@@ -72,7 +75,7 @@ Character-level real-time co-editing, real authentication, comments, version his
 
 ### With another 2-4 hours
 
-1. Version history with restore
+1. Ship version history with restore (the prototype is on `feature/version-history`)
 2. Playwright end-to-end test of the share flow in a real browser
 3. Character-level co-editing (Yjs through a hosted provider), replacing the version check
 4. Comments on a text selection

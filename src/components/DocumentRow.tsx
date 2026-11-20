@@ -3,9 +3,17 @@ import { Eye, FileText, Pencil, Users } from "lucide-react";
 import { timeAgo } from "@/lib/format";
 import { DeleteDocumentButton } from "./DeleteDocumentButton";
 
+type Common = {
+  id: string;
+  title: string;
+  updatedAt: Date;
+  /** "you", another person's name, or null when unknown. */
+  editedBy: string | null;
+};
+
 type Props =
-  | { kind: "owned"; id: string; title: string; updatedAt: Date; shareCount: number }
-  | { kind: "shared"; id: string; title: string; updatedAt: Date; role: "viewer" | "editor"; ownerName: string };
+  | (Common & { kind: "owned"; shareCount: number })
+  | (Common & { kind: "shared"; role: "viewer" | "editor"; ownerName: string });
 
 export function DocumentRow(props: Props) {
   return (
@@ -16,6 +24,7 @@ export function DocumentRow(props: Props) {
         <p className="truncate text-xs text-gray-500">
           {props.kind === "shared" && <>Owned by {props.ownerName} · </>}
           Edited {timeAgo(props.updatedAt)}
+          {props.editedBy && !(props.kind === "shared" && props.editedBy === props.ownerName) && <> by {props.editedBy}</>}
         </p>
       </Link>
       {props.kind === "owned" ? (

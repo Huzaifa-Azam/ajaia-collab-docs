@@ -11,6 +11,8 @@ export const metadata = { title: "Documents · Ajaia Docs" };
 export default async function DocumentsPage() {
   const user = await requireUser();
   const { owned, shared } = await listDocumentsForUser(user.id);
+  const editedBy = (doc: { lastEditedById: string | null; lastEditedByName: string | null }) =>
+    doc.lastEditedById === user.id ? "you" : doc.lastEditedByName;
 
   return (
     <>
@@ -29,13 +31,30 @@ export default async function DocumentsPage() {
 
         <Section title="My documents" count={owned.length} empty="No documents yet. Create one or import a file to get started.">
           {owned.map((doc) => (
-            <DocumentRow key={doc.id} kind="owned" {...doc} />
+            <DocumentRow
+              key={doc.id}
+              kind="owned"
+              id={doc.id}
+              title={doc.title}
+              updatedAt={doc.updatedAt}
+              shareCount={doc.shareCount}
+              editedBy={editedBy(doc)}
+            />
           ))}
         </Section>
 
         <Section title="Shared with me" count={shared.length} empty="Nothing has been shared with you yet.">
           {shared.map((doc) => (
-            <DocumentRow key={doc.id} kind="shared" {...doc} />
+            <DocumentRow
+              key={doc.id}
+              kind="shared"
+              id={doc.id}
+              title={doc.title}
+              updatedAt={doc.updatedAt}
+              role={doc.role}
+              ownerName={doc.ownerName}
+              editedBy={editedBy(doc)}
+            />
           ))}
         </Section>
       </main>

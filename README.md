@@ -22,7 +22,7 @@ Sign-in is simulated: open the app, pick an account, no password needed. To see 
 
 ## What works
 
-- **Documents:** create, rename (click the title), delete (owner only), and reopen. The home page separates **My documents** from **Shared with me** and shows owner and access level.
+- **Documents:** create, rename (click the title), delete (owner only), and reopen. The home page separates **My documents** from **Shared with me** and shows the owner, your access level, and who edited last.
 - **Rich-text editing** (Tiptap): bold, italic, underline, strikethrough, headings 1 to 3, bulleted and numbered lists, quotes, undo/redo and clear formatting, from the toolbar or keyboard shortcuts.
 - **Autosave:** changes save about a second after you stop typing (or straight away with `Ctrl+S`), with a visible status: *Saving… / All changes saved / Couldn't save, retrying*. If you leave the page with unsaved edits, they're sent before it closes.
 - **Overwrite protection:** every save carries the version it was based on. If someone else saved in between, the save is rejected (HTTP 409) and you're asked to reload, instead of their work being silently overwritten.
@@ -30,7 +30,7 @@ Sign-in is simulated: open the app, pick an account, no password needed. To see 
 - **File import:** upload a file to turn it into a new editable document. Headings, bold, italic, underline and lists are kept.
 - **Persistence:** documents, formatting and sharing live in Postgres and survive refreshes and redeploys.
 
-**Stretch features**, added once the above was done and verified:
+**Stretch features**, added once the above was done and verified. A version history prototype was also built but deliberately not shipped (branch `feature/version-history`); [ARCHITECTURE.md](ARCHITECTURE.md) explains why.
 
 - **Presence and live updates:** the editor header shows who else has the document open ("Bob is here too"). When someone saves, others see *"Bob Martinez saved new changes · Show latest"* within about 10 seconds, instead of finding out later through a conflict. Viewers' read-only copies update on their own.
 - **Export:** *Download → Markdown (.md)*, or *PDF* through the browser's print dialog. A print stylesheet hides the app's toolbars and banners, so only the document is printed.
@@ -77,6 +77,7 @@ npm run dev         # http://localhost:3000
 | `npm test` | Run the Vitest suite |
 | `npm run smoke [-- URL]` | End-to-end API checks against a running app |
 | `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint |
 | `npm run db:generate` | Create a migration after changing `src/lib/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:seed` | Create demo accounts and documents |
@@ -110,6 +111,8 @@ npm run smoke -- https://ajaia-collab-docs-one.vercel.app   # the same checks ag
 It deletes everything it creates.
 
 After manual testing, `npm run db:reset-demo` puts the demo documents back to their original state.
+
+**CI:** GitHub Actions (`.github/workflows/ci.yml`) runs typecheck, lint, the unit tests and a production build on every push to `main` and on pull requests.
 
 ## Deploying
 

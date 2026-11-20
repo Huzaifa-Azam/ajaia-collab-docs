@@ -8,7 +8,12 @@ With a 225-minute timebox, I aimed for a small product that is **trustworthy** r
 2. **Access control that is real.** Sharing is enforced on the server for every request, not just by hiding buttons. One permission module decides everything, and it is unit-tested.
 3. **Safe file handling.** Imports are converted on the server, checked by type, size, encoding and file signature, and sanitized before they are stored.
 
-Once those three were done and verified, the remaining time went to two stretch features: **presence with new-version notices**, and **export**. Everything else (real login, character-level co-editing, comments, history) was deliberately cut and is listed at the end.
+**On the stretch work.** The brief suggests "one small enhancement". Viewer/editor roles were part of the sharing design from the start. Once the core was done and verified, I added two more:
+
+- **Presence with new-version notices.** It completes the concurrency story: people learn about a newer version before they hit a conflict.
+- **Export.** It was cheap because content is already HTML.
+
+I also prototyped **version history** (preview and restore) but deliberately didn't ship it, to keep the scope tight. It's on the `feature/version-history` branch. Everything else (real login, character-level co-editing, comments) was cut and is listed at the end.
 
 ## Shape of the system
 
@@ -65,14 +70,15 @@ Foreign keys cascade, so deleting a document removes its shares. Migrations are 
 |---|---|
 | Character-level real-time co-editing | Merging two people's keystrokes needs a CRDT (such as Yjs) and a persistent socket server, which Vercel functions can't hold. Presence, new-version notices and the version check cover awareness and safety. |
 | Real authentication | The brief allows simulated users. The session boundary is isolated, so a real provider is a contained change. |
-| Comments, suggestions, version history | Valuable, but each is its own feature. I preferred finishing the core flows properly. |
+| Comments and suggestions | Valuable, but a feature in its own right. I preferred finishing the core flows properly. |
+| Shipping version history | Prototyped on `feature/version-history`: a snapshot per editing session, preview, and restore as a versioned save. Left unshipped to keep the scope tight. |
 | Attachments, images and tables in documents | Need blob storage and a bigger editor schema. Imports keep text and formatting only. |
 | Public link sharing, notifications | Outside "share with another user". |
-| Browser end-to-end tests | Unit tests cover the riskiest logic; end-to-end flows were checked by hand in the browser (see AI_WORKFLOW.md). |
+| Browser end-to-end tests | Unit tests cover the riskiest logic, and an HTTP smoke test covers the flows end to end. The UI was checked by hand in a browser (see AI_WORKFLOW.md). CI runs typecheck, lint, unit tests and a build on every push. |
 
 ## With another 2-4 hours
 
-1. **Version history:** a `document_versions` snapshot table written every few minutes of editing, with a restore button.
+1. **Version history:** finish and ship the prototype on `feature/version-history`. It needs a review of the snapshot rules with real usage, plus pruning of old versions.
 2. **Playwright end-to-end test** of the share flow in a real browser: Alice shares with Bob, Bob edits, Carol is read-only.
 3. **Character-level co-editing:** Yjs through a hosted provider (such as Liveblocks or Y-Sweet), replacing the version check and polling.
 4. **Comments** anchored to a text selection.

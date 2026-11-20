@@ -213,6 +213,11 @@ export function DocumentEditor({ doc, role, owner }: Props) {
     document.title = `${title.trim() || "Untitled document"} · Ajaia Docs`;
   }, [title]);
 
+  // A brand-new document: select the placeholder title so the user can name it straight away.
+  useEffect(() => {
+    if (canEdit && doc.title === "Untitled document" && !doc.content) titleInputRef.current?.select();
+  }, [canEdit, doc.title, doc.content]);
+
   async function commitTitle() {
     const next = title.trim();
     if (next === savedTitleRef.current) {
@@ -267,8 +272,11 @@ export function DocumentEditor({ doc, role, owner }: Props) {
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
+                    // Save the title and carry on writing in the document body, like a word processor.
+                    // (view.focus() is synchronous; Tiptap's focus command waits for an animation frame.)
                     e.preventDefault();
                     e.currentTarget.blur();
+                    editor?.view.focus();
                   } else if (e.key === "Escape") {
                     cancelTitleEditRef.current = true;
                     setTitle(savedTitleRef.current);
