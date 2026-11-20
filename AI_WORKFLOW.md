@@ -38,11 +38,12 @@ I made the product calls: scope, stack, what to deprioritize, and whether each r
    - a Markdown export bug, caught by its unit test
    - Enter in a new document's title not moving the cursor into the body in background tabs
    - the database and the functions running on different continents
+   - images in imported files vanishing without a trace. I found this by importing a Word file with a picture. They now leave a visible note, and the UI says images aren't imported
 
 ## How I verified correctness, UX and reliability
 
 - **Before every push:** strict TypeScript, lint and a production build. CI repeats them on GitHub; I first ran the pipeline in a fresh clone.
-- **Automated tests:** 53 unit tests, plus a 40-check end-to-end smoke test that passes locally and against the live site.
+- **Automated tests:** 56 unit tests, plus a 40-check end-to-end smoke test that passes locally and against the live site.
 - **Manual testing in a real browser** as each account:
   - formatting survives a reload (exact HTML compared)
   - the viewer's editor is truly read-only

@@ -30,9 +30,9 @@ Reviewers: start with [SUBMISSION.md](SUBMISSION.md). Design notes are in [ARCHI
 |---|---|
 | `.txt` | UTF-8 text; blank lines become paragraphs |
 | `.md` / `.markdown` | Headings, emphasis, lists, quotes, code and links |
-| `.docx` | Text, headings, emphasis and lists. Images and tables aren't imported |
+| `.docx` | Text, headings, emphasis and lists. Tables come through as plain text |
 
-Files up to **2 MB**. Any other type is rejected with a clear message.
+Files up to **2 MB**. Images aren't imported. Instead of vanishing, each one is replaced by a short note in the document, such as *[Image not imported: Team photo]*. Any other file type is rejected with a clear message.
 
 ## Run locally
 
@@ -59,7 +59,7 @@ Other scripts: `npm run lint`, `npm run typecheck`, `npm run db:migrate`, and `n
 ## Tests and CI
 
 ```bash
-npm test                    # 53 unit tests (no database needed)
+npm test                    # 56 unit tests (no database needed)
 npm run smoke               # 40 end-to-end HTTP checks against http://localhost:3000
 npm run smoke -- https://ajaia-collab-docs-one.vercel.app    # the same checks against the live site
 ```

@@ -49,11 +49,11 @@ Only after the core was verified did I add two small stretch enhancements, prese
 - Persistence in Postgres, and deployment on Vercel
 - Stretch: presence with "new changes" notices, and export to Markdown or PDF
 
-**Quality:** 53 unit tests, a 40-check end-to-end smoke test that passes against the live site, and CI on every push (typecheck, lint, tests, build).
+**Quality:** 56 unit tests, a 40-check end-to-end smoke test that passes against the live site, and CI on every push (typecheck, lint, tests, build).
 
 **Known limitations**
 - Simultaneous edits aren't merged. Others hear about a newer version within about 10 seconds, and a save based on an outdated copy is rejected rather than overwriting it. But merging is manual.
-- `.docx` import keeps text, headings, emphasis and lists, but not images or tables.
+- Imports keep text, headings, emphasis and lists. Images are replaced by a visible "[Image not imported]" note, and tables become plain text.
 - Sign-in is simulated, so anyone with the link can use any demo account.
 
 **Next, with another 2-4 hours**

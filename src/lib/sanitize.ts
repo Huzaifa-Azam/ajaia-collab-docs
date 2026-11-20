@@ -6,11 +6,24 @@ const ALLOWED_TAGS = [
   "blockquote", "ul", "ol", "li", "hr", "a",
 ];
 
+type SanitizeOptions = {
+  /**
+   * For imports: images aren't supported, so instead of dropping them silently, leave a visible
+   * "[Image not imported: description]" note where each one was.
+   */
+  describeDroppedImages?: boolean;
+};
+
+const describeImage: sanitizeHtml.Transformer = (_tagName, attribs) => {
+  const description = attribs.alt?.trim();
+  return { tagName: "em", attribs: {}, text: `[Image not imported${description ? `: ${description}` : ""}]` };
+};
+
 /**
  * Runs on every write (editor saves and file imports), so stored HTML can never carry
  * scripts, event handlers or javascript: links, whatever the client sends.
  */
-export function sanitizeDocumentHtml(html: string): string {
+export function sanitizeDocumentHtml(html: string, options: SanitizeOptions = {}): string {
   return sanitizeHtml(html, {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: { a: ["href", "target", "rel"], ol: ["start"] },
@@ -26,6 +39,7 @@ export function sanitizeDocumentHtml(html: string): string {
       h5: "h3",
       h6: "h3",
       a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer nofollow", target: "_blank" }),
+      ...(options.describeDroppedImages ? { img: describeImage } : {}),
     },
   }).trim();
 }

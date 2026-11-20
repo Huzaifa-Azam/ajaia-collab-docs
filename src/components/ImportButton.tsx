@@ -61,7 +61,7 @@ export function ImportButton() {
         {busy ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden /> : <FileUp className="h-4 w-4" aria-hidden />}
         {busy ? "Importing…" : "Import file"}
       </button>
-      <p className="mt-1 text-xs text-gray-500">{IMPORT_HELP_TEXT}</p>
+      <p className="mt-1 max-w-48 text-right text-xs text-gray-500">{IMPORT_HELP_TEXT}</p>
       {error && (
         <p role="alert" className="mt-1 max-w-64 text-right text-xs text-red-600">
           {error}

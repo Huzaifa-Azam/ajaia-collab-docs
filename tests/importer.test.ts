@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/errors";
 import { IMPORT_MAX_BYTES } from "@/lib/import-rules";
 import { convertFileToHtml, textToHtml, titleFromFilename } from "@/lib/importer";
+import { sanitizeDocumentHtml } from "@/lib/sanitize";
 
 const utf8 = (text: string) => new TextEncoder().encode(text);
 
@@ -125,6 +126,26 @@ describe("docx import", () => {
     const damaged = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4, 5, 6, 7, 8]);
     const err = await importError("damaged.docx", damaged);
     expect(err).toMatchObject({ status: 400, code: "unreadable_docx" });
+  });
+});
+
+describe("images in imported files", () => {
+  it("replaces each image with a visible note instead of dropping it silently", async () => {
+    const html = await convertFileToHtml("notes.md", utf8("Before\n\n![Team photo](https://example.com/team.png)\n\nAfter"));
+    expect(html).toContain("<p><em>[Image not imported: Team photo]</em></p>");
+    expect(html).not.toContain("<img");
+  });
+
+  it("escapes the image description", () => {
+    const html = sanitizeDocumentHtml('<p><img src="x.png" alt="<script>alert(1)</script>"></p>', {
+      describeDroppedImages: true,
+    });
+    expect(html).not.toContain("<script");
+    expect(html).toContain("[Image not imported: &lt;script&gt;alert(1)&lt;/script&gt;]");
+  });
+
+  it("still drops images from editor saves, which can't contain them", () => {
+    expect(sanitizeDocumentHtml('<p>a<img src="x.png" alt="y"></p>')).toBe("<p>a</p>");
   });
 });
 

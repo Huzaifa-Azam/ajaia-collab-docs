@@ -69,7 +69,7 @@ export async function convertFileToHtml(filename: string, bytes: Uint8Array): Pr
     html = ext === ".txt" ? textToHtml(text) : markdownToHtml(text);
   }
 
-  const clean = sanitizeDocumentHtml(html);
+  const clean = sanitizeDocumentHtml(html, { describeDroppedImages: true });
   if (!hasVisibleText(clean)) throw new AppError(400, "no_text", "We couldn't find any text in this file.");
   return clean;
 }
